@@ -1,0 +1,678 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12161b">
+<title>Silk Board Mesh Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a traffic control-room console. The corridor folded into rows on the left, the twin comparison and controls on a rail at right, the time-space strips under the road. One deliberate dark look: evening peak under sodium lamps, with road-sign condensed type. */
+:root {
+  --night: #12161b;
+  --panel: #1a1f26;
+  --panel-2: #232a33;
+  --rule: #2f3742;
+  --ink: #ebe6da;
+  --ink-2: #b1b7be;
+  --ink-3: #8a939e;
+  --road: #2a2f36;
+  --road-line: rgba(235, 230, 218, .28);
+  --sodium: #f0a43a;
+  --mesh: #46d2c0;
+  --mesh-dim: rgba(70, 210, 192, .14);
+  --query: #b9a2ff;
+  --report: #e58fb6;
+  --good: #8fd47a;
+  --bad: #ef6f5f;
+  --kerb: #e3c447;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--night); color: var(--ink); }
+body { font: 15px/1.45 var(--body); }
+.app { padding-inline: 16px; padding-block: 0 24px; max-width: 1680px; margin-inline: auto; }
+button, select, input { font: inherit; color: inherit; }
+button { touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--mesh); outline-offset: 2px; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; padding-block: 14px 12px; border-bottom: 1px solid var(--rule); }
+.brand { display: grid; gap: 3px; margin-right: auto; min-width: 0; }
+.brand h1 { margin: 0; font: 700 28px/1 var(--display); letter-spacing: .02em; text-transform: uppercase; text-wrap: balance; }
+.brand p { margin: 0; color: var(--ink-3); font-size: 14px; }
+.clock { display: flex; align-items: center; gap: 14px; font: 500 14px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.signal { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 6px; border: 1px solid var(--rule); border-radius: 999px; background: var(--panel); }
+.lamp { width: 12px; height: 12px; border-radius: 50%; background: var(--bad); }
+.signal[data-state="green"] .lamp { background: var(--good); }
+.signal[data-state="amber"] .lamp { background: var(--sodium); }
+.transport { display: flex; align-items: center; gap: 6px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; background: none; padding: 6px 11px; cursor: pointer; color: var(--ink-2); font: 600 14.5px var(--display); letter-spacing: .02em; }
+.seg button:hover:not(:disabled) { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 -2px 0 var(--sodium); }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }
+.btn { border: 1px solid var(--rule); background: var(--panel); border-radius: 8px; padding: 7px 13px; cursor: pointer; font: 600 15px var(--display); letter-spacing: .02em; color: var(--ink); white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.warn { color: var(--sodium); }
+.btn.on { border-color: var(--sodium); color: var(--sodium); }
+.mesh-btn { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--mesh); background: var(--mesh-dim); color: var(--ink); border-radius: 8px; padding: 9px 16px; cursor: pointer; font: 700 17px var(--display); letter-spacing: .02em; white-space: nowrap; }
+.mesh-btn:active { transform: translateY(1px); }
+.mesh-btn .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--mesh); }
+.mesh-btn[aria-pressed="true"] { background: var(--mesh); color: #0b1a18; }
+.mesh-btn[aria-pressed="true"] .dot { background: #0b1a18; border-color: #0b1a18; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; padding-top: 16px; align-items: start; }
+@media (max-width: 1080px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.stage { min-width: 0; display: grid; gap: 10px; }
+.stage-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.stage-head .group { display: flex; align-items: center; gap: 8px; }
+.stage-head .label { font: 500 14px var(--display); color: var(--ink-3); }
+.hint { color: var(--ink-3); font-size: 13.5px; margin-left: auto; }
+.road-wrap { position: relative; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+#road { display: block; width: 100%; cursor: crosshair; }
+.warm { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(18, 22, 27, .72); font: 600 20px var(--display); color: var(--sodium); text-align: center; padding: 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2); font-size: 13px; }
+.legend i { display: inline-block; width: 14px; height: 7px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.legend .ring { width: 12px; height: 9px; border-radius: 2px; border: 1.5px solid var(--mesh); background: none; }
+.st-wrap { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 12px 10px; display: grid; gap: 6px; }
+h2 { margin: 0; font: 700 19px/1.15 var(--display); letter-spacing: .01em; color: var(--ink); text-wrap: balance; }
+.st-wrap p { margin: 0; color: var(--ink-3); font-size: 13.5px; max-width: 75ch; }
+.st-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 6px 16px; }
+.scale { display: flex; align-items: center; gap: 8px; font: 500 11.5px var(--mono); color: var(--ink-3); }
+.scale span.bar { width: 160px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, hsl(4 72% 52%), hsl(38 72% 52%), hsl(110 72% 50%)); }
+#st { display: block; width: 100%; }
+
+.rail { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.card.lead { border-color: rgba(70, 210, 192, .45); }
+.card p { margin: 0; color: var(--ink-2); font-size: 14px; }
+.cmp { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cmp th { font: 600 13px var(--display); color: var(--ink-3); text-align: right; padding: 0 0 6px 8px; }
+.cmp th:first-child { text-align: left; padding-left: 0; }
+.cmp td { padding: 6px 0 6px 8px; border-top: 1px solid var(--rule); text-align: right; font: 500 14px var(--mono); vertical-align: top; }
+.cmp td:first-child { text-align: left; padding-left: 0; font: 500 14px var(--body); color: var(--ink-2); }
+.cmp td small { display: block; font: 400 11.5px var(--body); color: var(--ink-3); }
+.cmp td .delta { font: 500 12px var(--mono); }
+.delta.good { color: var(--good); }
+.delta.bad { color: var(--bad); }
+.delta.flat { color: var(--ink-3); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; }
+.stat { display: grid; gap: 2px; align-content: start; }
+.stat b { font: 500 20px var(--mono); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12.5px; color: var(--ink-3); line-height: 1.25; }
+.feed { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 13.5px; }
+.feed li { padding: 7px 0; border-top: 1px solid var(--rule); color: var(--ink-2); display: grid; gap: 2px; }
+.feed .row1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tag { font: 600 13px var(--display); padding: 0 6px; border-radius: 4px; border: 1px solid currentColor; }
+.tag.caution { color: var(--sodium); }
+.tag.report { color: var(--report); }
+.feed time, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: 12.5px; }
+.empty { color: var(--ink-3); font-size: 14px; }
+.ctrl { display: grid; gap: 4px; }
+.ctrl label { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.ctrl output { font: 500 13px var(--mono); color: var(--ink); }
+input[type="range"] { width: 100%; accent-color: var(--sodium); }
+select { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.check input { accent-color: var(--sodium); width: 16px; height: 16px; }
+.picked dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+.picked dt { color: var(--ink-3); }
+.picked dd { margin: 0; color: var(--ink); min-width: 0; }
+.advice { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--ink); font-size: 14px; }
+.notes { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+.notes summary { cursor: pointer; font: 700 19px var(--display); color: var(--ink); }
+.notes ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 6px; color: var(--ink-2); font-size: 14px; max-width: 80ch; }
+.notes code { font: 12.5px var(--mono); color: var(--ink); }
+.tbl-wrap { overflow-x: auto; margin-top: 12px; }
+.tbl-wrap table { border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 560px; }
+.tbl-wrap caption { text-align: left; padding-bottom: 6px; color: var(--ink-3); font-size: 13.5px; }
+.tbl-wrap th, .tbl-wrap td { padding: 5px 12px 5px 0; border-top: 1px solid var(--rule); text-align: right; }
+.tbl-wrap th:nth-child(-n+2), .tbl-wrap td:nth-child(-n+2) { text-align: left; }
+.tbl-wrap th { font: 600 13px var(--display); color: var(--ink-3); border-top: 0; }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <h1>Silk Board Mesh Lab</h1>
+      <p>Hosur Road into Silk Board junction at evening peak. 1.2 km of mixed, keep-left traffic.</p>
+    </div>
+    <div class="clock">
+      <span id="clock">18:20:00</span>
+      <span class="signal" id="signal" data-state="red" title="Silk Board signal for this approach"><span class="lamp"></span><span id="sigText">Red 77 s</span></span>
+    </div>
+    <div class="transport">
+      <button class="btn" id="play">Pause</button>
+      <div class="seg" role="group" aria-label="Simulation speed" id="speeds">
+        <button data-speed="1">1×</button><button data-speed="2" aria-pressed="true">2×</button><button data-speed="4">4×</button><button data-speed="8">8×</button>
+      </div>
+    </div>
+    <button class="mesh-btn" id="meshBtn" aria-pressed="false"><span class="dot"></span><span id="meshLabel">Apply RESILANE mesh</span></button>
+  </header>
+
+  <div class="grid">
+    <section class="stage" aria-label="Road">
+      <div class="stage-head">
+        <div class="group"><span class="label">Show</span>
+          <div class="seg" role="group" aria-label="Which copy of the road to show" id="views">
+            <button data-view="main" aria-pressed="true" id="viewMain">Now</button><button data-view="twin" id="viewTwin" disabled>Without mesh</button>
+          </div>
+        </div>
+        <div class="group"><span class="label">Colour by</span>
+          <div class="seg" role="group" aria-label="Colour vehicles by" id="colours">
+            <button data-colour="type" aria-pressed="true">Type</button><button data-colour="speed">Speed</button>
+          </div>
+        </div>
+        <div class="group"><span class="label">Zoom</span>
+          <div class="seg" role="group" aria-label="Zoom" id="zooms">
+            <button data-rows="4">Corridor</button><button data-rows="6">Close</button><button data-rows="12">Closer</button>
+          </div>
+        </div>
+        <span class="hint" id="hint">Click a vehicle to follow it.</span>
+      </div>
+      <div class="road-wrap" id="roadWrap">
+        <canvas id="road" aria-label="Top view of the corridor folded into rows. Traffic moves left to right and continues on the next row."></canvas>
+        <div class="warm" id="warm">Evening peak building up…</div>
+      </div>
+      <div class="legend" aria-label="Legend">
+        <span><i style="background:#9fb3c8"></i>Two-wheeler</span>
+        <span><i style="background:#d8cf3a"></i>Auto</span>
+        <span><i style="background:#cfd2d6"></i>Car</span>
+        <span><i style="background:#c8452f"></i>BMTC bus</span>
+        <span><i style="background:#d9822b"></i>Truck</span>
+        <span><i style="background:var(--mesh);width:7px;border-radius:50%"></i>Has RESILANE</span>
+        <span><i class="ring"></i>Warned and acting on it</span>
+        <span><i style="background:var(--query)"></i>Road query</span>
+      </div>
+      <div class="st-wrap">
+        <div class="st-head">
+          <h2>Stop-and-go waves</h2>
+          <div class="scale" aria-label="Speed colour scale"><span>0</span><span class="bar"></span><span>40+ km/h</span></div>
+        </div>
+        <p>Time runs left to right over the last 8 minutes. The corridor runs from the entry at the bottom to Silk Board at the top. Stripes sloping down to the right are slowdowns travelling back against the traffic.</p>
+        <canvas id="st" aria-label="Time-space diagram of average speed along the corridor"></canvas>
+      </div>
+      <details class="notes" id="notes">
+        <summary>How this is modelled</summary>
+        <ul>
+          <li><b>Traffic.</b> Each driver follows the improved IDM with the constant-acceleration heuristic, acts at their own reaction points (0.3 to 1.0 s) and is occasionally distracted. There are no lanes: riders and drivers move sideways into whichever gap moves fastest, as on Hosur Road. The mix is 56% two-wheelers, 24% cars, 10% autos, 6% BMTC buses and 4% trucks. Buses stop at the kerb for 15 to 40 s, some autos stop for passengers, people cross on foot, and a few riders jump the red. The signal shows 40 s green, 3 s amber, 77 s red.</li>
+          <li><b>Who sees what.</b> Without the app, a driver notices a hazard 28 to 55 m ahead, less when a car or bus blocks the view. With the app, a warning can arrive hundreds of metres ahead.</li>
+          <li><b>Radio.</b> Each Bluetooth advertising event reaches a phone with a chance that falls to 50% at the radio reach. A bus or truck in the path cuts that by 30%, and a busy channel cuts it further. Origins send 10 events and relays send 4, 100 ms apart, as the app does.</li>
+          <li><b>Mesh rules</b> are ported from the RoadMesh app, <code>core/mesh/MeshEngine.kt</code> (road profile). A warning can be relayed 4 times and stays fresh for 5 s. A relay waits up to 200 ms (less for distant receivers) plus 0 to 20 ms of jitter, and is dropped after the phone overhears 2 copies further along. Each phone relays at most 3 frames and originates at most 2 per second. A warning is spoken within 400 m when its origin is ahead within 30°. Long-lived reports are re-sent every 20 s within 250 m. Road queries follow <code>RoadQueries.kt</code> and the advice follows <code>RoadPicture.forecast</code>.</li>
+          <li><b>What warned drivers do.</b> They move out of a reported pothole or crash up to 200 to 250 m early, slow to 20 km/h for a pothole they cannot avoid, and slow to 25 km/h near a crash. For a slowdown they ease off once to the spoken speed, v × D / (D + 90 m), never below 15 km/h, and hold it for 30 s. These are assumptions about people, not measurements.</li>
+          <li><b>The comparison is fair.</b> Applying the mesh forks the road into two copies with the same vehicles, arrivals and driver randomness, and incidents land in both. The copies then differ only because of the mesh. With every driver response switched off they stay identical, which <code>check.mjs</code> verifies.</li>
+          <li><b>Not calibrated against field data.</b> Use it to compare designs under identical conditions, not to forecast real numbers.</li>
+        </ul>
+        <div class="tbl-wrap">
+          <table>
+            <caption>Measured with <code>check.mjs</code> over 6 seeds, 6 minutes after the fork, 25% of vehicles with the app. Change against the twin without the mesh; for speed and throughput higher is better, for braking and near misses lower is better. At 4,200 veh/h the signal's capacity sets the jam, so warnings change little. The gains show around incidents at moderate demand, and the app's current ease-off advice costs speed everywhere.</caption>
+            <thead><tr><th>Demand</th><th>What warned drivers do</th><th>Speed</th><th>Hard brakes</th><th>Near misses</th><th>Throughput</th></tr></thead>
+            <tbody><tr><td>3,600 veh/h</td><td>As the app does now</td><td>−7%</td><td>−2%</td><td>+10%</td><td>−7%</td></tr><tr><td>3,600 veh/h</td><td>Queue tails only</td><td>−2%</td><td>−5%</td><td>0%</td><td>−1%</td></tr><tr><td>3,600 veh/h</td><td>Hazards only</td><td>−1%</td><td>+1%</td><td>+5%</td><td>−1%</td></tr><tr><td>3,600 veh/h, crash</td><td>As the app does now</td><td>−5%</td><td>−8%</td><td>−8%</td><td>−3%</td></tr><tr><td>3,600 veh/h, crash</td><td>Queue tails only</td><td>−4%</td><td>−11%</td><td>−6%</td><td>−4%</td></tr><tr><td>3,600 veh/h, crash</td><td>Hazards only</td><td>−1%</td><td>−1%</td><td>−3%</td><td>−1%</td></tr><tr><td>4,200 veh/h</td><td>As the app does now</td><td>−5%</td><td>0%</td><td>−1%</td><td>−3%</td></tr><tr><td>4,200 veh/h</td><td>Queue tails only</td><td>0%</td><td>−1%</td><td>0%</td><td>+5%</td></tr><tr><td>4,200 veh/h</td><td>Hazards only</td><td>0%</td><td>−1%</td><td>0%</td><td>0%</td></tr><tr><td>4,200 veh/h, crash</td><td>As the app does now</td><td>−6%</td><td>+3%</td><td>+5%</td><td>0%</td></tr><tr><td>4,200 veh/h, crash</td><td>Queue tails only</td><td>0%</td><td>+1%</td><td>−4%</td><td>+1%</td></tr><tr><td>4,200 veh/h, crash</td><td>Hazards only</td><td>+1%</td><td>+2%</td><td>−3%</td><td>+2%</td></tr></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <aside class="rail">
+      <section class="card lead" aria-labelledby="cmpTitle">
+        <h2 id="cmpTitle">With and without the mesh</h2>
+        <p id="cmpNote">Apply the mesh to fork the road into two identical copies: one where phones with RESILANE talk to each other, one where nobody has the app.</p>
+        <table class="cmp" id="cmp"></table>
+      </section>
+
+      <section class="card" aria-labelledby="meshTitle">
+        <h2 id="meshTitle">Mesh activity</h2>
+        <div class="stats" id="meshStats"></div>
+        <ul class="feed" id="feed"></ul>
+      </section>
+
+      <section class="card picked" aria-labelledby="pickTitle">
+        <h2 id="pickTitle">Followed vehicle</h2>
+        <div id="picked"></div>
+      </section>
+
+      <section class="card" aria-labelledby="ctlTitle">
+        <h2 id="ctlTitle">Road and incidents</h2>
+        <div class="row">
+          <button class="btn warn" id="crashBtn">Crash at 880 m</button>
+          <button class="btn" id="placeBtn" aria-pressed="false">Place a crash</button>
+          <button class="btn" id="clearBtn">Clear crashes</button>
+        </div>
+        <div class="ctrl"><label for="demand">Traffic demand <output id="demandOut">4,200 veh/h</output></label><input type="range" id="demand" min="1500" max="5000" step="100" value="4200"></div>
+        <div class="ctrl"><label for="share">Vehicles with the app <output id="shareOut">25%</output></label><input type="range" id="share" min="0" max="60" step="5" value="25"></div>
+        <div class="ctrl"><label for="reach">Radio reach, 50% per event <output id="reachOut">80 m</output></label><input type="range" id="reach" min="40" max="140" step="5" value="80"></div>
+        <div class="ctrl"><label for="jay">People crossing on foot <output id="jayOut">1 / min</output></label><input type="range" id="jay" min="0" max="4" step="0.5" value="1"></div>
+        <div class="ctrl"><label for="advice">What warned drivers do</label>
+          <select id="advice">
+            <option value="app">As the app does now: ease off for braking and slowdowns, avoid hazards</option>
+            <option value="tails">Queue tails only: ignore single braking reports</option>
+            <option value="hazards">Hazards only: no ease-off advice</option>
+          </select>
+        </div>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="pothole" checked> Pothole at 645 m</label>
+          <label class="check"><input type="checkbox" id="busStops" checked> BMTC stop at 340 m</label>
+        </div>
+        <div class="row"><button class="btn" id="resetBtn">Start a new evening</button></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script src="sim-core.js"></script>
+<script>
+(() => {
+  'use strict';
+  const S = window.SilkSim, C = S.cfg;
+  const $ = (id) => document.getElementById(id);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const WARM_S = 360;
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n) => css.getPropertyValue(n).trim();
+  const col = { road: tok('--road'), line: tok('--road-line'), mesh: tok('--mesh'), sodium: tok('--sodium'), query: tok('--query'),
+    ink: tok('--ink'), ink3: tok('--ink-3'), panel: tok('--panel'), kerb: tok('--kerb'), bad: tok('--bad'), good: tok('--good') };
+  const FONT_MONO = tok('--mono'), FONT_DISPLAY = tok('--display');
+  C.demand = 4200;
+
+  let seed = 7, main, twin = null, view = 'main', playing = true, speed = 2, colour = 'type', rows = innerWidth > 900 ? 6 : 12;
+  let selected = null, placing = false, crashSeq = 0, warming = true, acc = 0, last = performance.now();
+  function boot() {
+    main = S.createWorld(seed); twin = null; view = 'main'; selected = null; warming = true; crashSeq = 0;
+    $('warm').hidden = false; syncMeshUi();
+  }
+
+  // ---------- road canvas ----------
+  const cv = $('road'), ctx = cv.getContext('2d');
+  const padX = 12; let segM, k, roadH, rowH, cssW, cssH, dpr, staticLayer;
+  const rowTop = (r) => r * rowH + 30;
+  function layout() {
+    cssW = $('roadWrap').clientWidth; dpr = Math.min(2, devicePixelRatio || 1);
+    segM = S.L / rows; k = (cssW - 2 * padX) / segM; roadH = S.W * k; rowH = roadH + 40; cssH = rows * rowH + 8;
+    cv.style.height = cssH + 'px'; cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+    staticLayer = document.createElement('canvas'); staticLayer.width = cv.width; staticLayer.height = cv.height;
+    drawStatic(staticLayer.getContext('2d'));
+    document.querySelectorAll('#zooms button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.rows === rows)));
+    layoutSt();
+  }
+  const X = (x, r) => padX + (x - r * segM) * k;
+  const rowOf = (x) => Math.max(0, Math.min(rows - 1, Math.floor(x / segM)));
+  function rowsSpanning(x0, x1) { const out = []; for (let r = rowOf(x0); r <= rowOf(x1); r++) out.push(r); return out; }
+
+  function drawStatic(g) {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = col.panel; g.fillRect(0, 0, cssW, cssH);
+    for (let r = 0; r < rows; r++) {
+      const top = rowTop(r), x0 = r * segM, x1 = x0 + segM;
+      g.fillStyle = '#20252b'; g.fillRect(padX, top - 5, segM * k, 4);
+      g.fillStyle = col.road; g.fillRect(padX, top, segM * k, roadH);
+      const kerb = (y) => { for (let m = Math.ceil(x0 / 3) * 3; m < x1; m += 3) { g.fillStyle = (m / 3) % 2 ? col.kerb : '#15171a'; g.fillRect(X(m, r), y, Math.min(3, x1 - m) * k, 2.2); } };
+      kerb(top - 1.2); kerb(top + roadH - 1);
+      g.strokeStyle = col.line; g.lineWidth = 1;
+      S.LANE_EDGES.forEach((y, i) => {
+        g.setLineDash(i === 0 ? [] : [3 * k, 6 * k]); g.globalAlpha = i === 0 ? .35 : .8;
+        g.beginPath(); g.moveTo(padX, top + y * k); g.lineTo(padX + segM * k, top + y * k); g.stroke();
+      });
+      g.setLineDash([]); g.globalAlpha = 1;
+      if (S.STOP_X + 35 > x0 && S.STOP_X < x1) {
+        const a = Math.max(S.STOP_X, x0), b = Math.min(S.STOP_X + 35, x1);
+        g.save(); g.beginPath(); g.rect(X(a, r), top, (b - a) * k, roadH); g.clip();
+        g.strokeStyle = 'rgba(227,196,71,.35)'; g.lineWidth = 1.2;
+        for (let d = -roadH; d < (b - a) * k + roadH; d += 7) { g.beginPath(); g.moveTo(X(a, r) + d, top); g.lineTo(X(a, r) + d + roadH, top + roadH); g.stroke(); }
+        g.restore();
+        if (S.STOP_X >= x0) { g.fillStyle = col.ink; g.fillRect(X(S.STOP_X, r) - 1, top, 2.5, roadH); }
+      }
+      if (S.BUS_STOP_X > x0 && S.BUS_STOP_X - 30 < x1) {
+        g.fillStyle = '#3b6fb0'; g.fillRect(X(Math.max(x0, S.BUS_STOP_X - 26), r), top - 8, Math.min(22, x1 - (S.BUS_STOP_X - 26)) * k, 3);
+      }
+      g.font = `500 10.5px ${FONT_MONO}`; g.fillStyle = col.ink3;
+      const step = segM >= 300 ? 100 : 50;
+      for (let m = Math.ceil(x0 / step) * step; m < x1; m += step) {
+        g.fillRect(X(m, r), top - 12, 1, 5);
+        if (m % 100 === 0) g.fillText(`${m} m`, X(m, r) + 3, top - 8);
+      }
+      g.font = `600 12px ${FONT_DISPLAY}`;
+      const mark = (x, text, colour) => { if (x >= x0 && x < x1) { g.fillStyle = colour; const w = g.measureText(text).width; g.fillText(text, Math.min(X(x, r) + 4, padX + segM * k - w), top - 20); } };
+      mark(3, 'From Bommanahalli', col.ink3);
+      mark(S.BUS_STOP_X - 26, 'BMTC stop', '#8fb4e6');
+      mark(S.POT.x0 - 2, 'Pothole', col.sodium);
+      mark(S.STOP_X - 66, 'Silk Board signal', col.ink);
+    }
+  }
+
+  function speedRGB(v) {
+    const t = Math.max(0, Math.min(1, v * 3.6 / 40));
+    const h = t < .5 ? 4 + t * 2 * 34 : 38 + (t - .5) * 2 * 72;
+    return `hsl(${h.toFixed(0)} 72% ${t < .5 ? 52 : 50}%)`;
+  }
+  const CAR_SHADES = ['#e7e4dd', '#c9ccd1', '#8c939c', '#b94a3e', '#3f6a96'];
+  function vehColour(e) {
+    if (e.kind === 'wreck') return col.bad;
+    if (colour === 'speed') return speedRGB(e.v);
+    switch (e.type) {
+      case 'bike': return '#9fb3c8';
+      case 'auto': return '#d8cf3a';
+      case 'bus': return e.shade % 3 === 0 ? '#2f74c0' : '#c8452f';
+      case 'truck': return '#d9822b';
+      default: return CAR_SHADES[e.shade];
+    }
+  }
+  const shown = () => (view === 'twin' && twin ? twin : main);
+
+  function draw() {
+    const w = shown();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(staticLayer, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (C.pothole) for (const r of rowsSpanning(S.POT.x0, S.POT.x1)) {
+      const top = rowTop(r);
+      ctx.fillStyle = '#121417'; ctx.strokeStyle = 'rgba(240,164,58,.6)'; ctx.lineWidth = 1;
+      [[0, 0.3, 4, 1.4], [3.5, 1.2, 5, 1.6], [7, 0.4, 3.5, 1.3]].forEach(([dx, dy, lw, lh]) => {
+        ctx.beginPath(); ctx.ellipse(X(S.POT.x0 + dx + lw / 2, r), top + (S.POT.y0 + dy + lh / 2) * k, lw / 2 * k, lh / 2 * k, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      });
+    }
+    const ph = S.signalPhase(w.t), sr = rowOf(S.STOP_X), stop = rowTop(sr);
+    ctx.fillStyle = ph.state === 'green' ? col.good : ph.state === 'amber' ? col.sodium : col.bad;
+    ctx.beginPath(); ctx.arc(X(S.STOP_X, sr) + 1, stop - 13, 4.5, 0, Math.PI * 2); ctx.fill();
+    if (w.mesh) {
+      const tm = w.tm;
+      for (const g of w.rings) {
+        const age = tm - g.t; if (age < 0 || age > 450) continue;
+        const R = (reduced ? 1 : age / 450) * C.reach * 1.1, a = 1 - age / 450;
+        ctx.strokeStyle = g.cls === 'h' ? col.mesh : col.query; ctx.globalAlpha = a * (g.cls === 'h' ? .5 : .35); ctx.lineWidth = 1.2;
+        for (const r of rowsSpanning(g.x - R, g.x + R)) {
+          const top = rowTop(r);
+          ctx.save(); ctx.beginPath(); ctx.rect(padX, top - 2, segM * k, roadH + 4); ctx.clip();
+          ctx.beginPath(); ctx.arc(X(g.x, r), top + g.y * k, R * k, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    const heedRing = [];
+    for (const e of w.ents) {
+      if (e.kind === 'ped') {
+        if (e.y < -0.2 || e.y > S.W + 0.2) continue;
+        const r = rowOf(e.x); ctx.fillStyle = col.ink; ctx.beginPath(); ctx.arc(X(e.x, r), rowTop(r) + e.y * k, Math.max(1.4, 0.35 * k), 0, Math.PI * 2); ctx.fill();
+        continue;
+      }
+      const fill = vehColour(e);
+      for (const r of rowsSpanning(e.x - e.len, e.x)) {
+        const x = X(e.x - e.len, r), y = rowTop(r) + (e.y - e.wid / 2) * k, lw = Math.max(1.5, e.len * k), lh = Math.max(1.2, e.wid * k);
+        ctx.fillStyle = fill; ctx.fillRect(x, y, lw, lh);
+        if (e.kind === 'wreck') { ctx.strokeStyle = '#2a0e0a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + lw, y + lh); ctx.moveTo(x + lw, y); ctx.lineTo(x, y + lh); ctx.stroke(); }
+        else if (e.type === 'auto' && colour === 'type' && lw > 4) { ctx.fillStyle = '#25321f'; ctx.fillRect(x + lw * .25, y + lh * .15, lw * .5, lh * .7); }
+      }
+      if (e.kind === 'veh' && w.mesh && S.isApp(e)) {
+        const r = rowOf(e.x - e.len / 2);
+        ctx.fillStyle = col.mesh; ctx.beginPath(); ctx.arc(X(e.x - e.len / 2, r), rowTop(r) + e.y * k, Math.max(1.6, Math.min(3, k * 0.45)), 0, Math.PI * 2); ctx.fill();
+        if (e.heeding) heedRing.push(e);
+      }
+    }
+    ctx.strokeStyle = col.mesh; ctx.lineWidth = 1.4;
+    for (const e of heedRing) {
+      const r = rowOf(e.x - e.len / 2), pad = 0.7;
+      ctx.strokeRect(X(e.x - e.len - pad, r), rowTop(r) + (e.y - e.wid / 2 - pad) * k, (e.len + 2 * pad) * k, (e.wid + 2 * pad) * k);
+    }
+    if (w.mesh) {
+      const tm = w.tm;
+      for (const l of w.links) {
+        const age = tm - l.t; if (age < 0 || age > 900) continue;
+        ctx.globalAlpha = (1 - age / 900) * (l.cls === 'h' ? .75 : .6);
+        ctx.strokeStyle = l.cls === 'h' ? col.mesh : col.query; ctx.lineWidth = l.cls === 'r' ? 1.4 : 1;
+        const fwd = l.x1 <= l.x2, xa = fwd ? l.x1 : l.x2, ya = fwd ? l.y1 : l.y2, xb = fwd ? l.x2 : l.x1, yb = fwd ? l.y2 : l.y1, span = (xb - xa) || 1;
+        for (const r of rowsSpanning(xa, xb)) {
+          const s0 = Math.max(xa, r * segM), s1 = Math.min(xb, (r + 1) * segM);
+          ctx.beginPath(); ctx.moveTo(X(s0, r), rowTop(r) + (ya + (yb - ya) * (s0 - xa) / span) * k); ctx.lineTo(X(s1, r), rowTop(r) + (ya + (yb - ya) * (s1 - xa) / span) * k); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    for (const c of w.crashes) {
+      const r = rowOf(c.x), x = X(c.x, r), y = rowTop(r) - 13;
+      ctx.fillStyle = col.bad; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y + 4); ctx.lineTo(x - 6, y + 4); ctx.closePath(); ctx.fill();
+    }
+    const sel = selected != null ? w.byId.get(selected) : null;
+    if (sel) {
+      const r = rowOf(sel.x - sel.len / 2), pad = 1.2;
+      ctx.strokeStyle = col.ink; ctx.lineWidth = 1.8;
+      ctx.strokeRect(X(sel.x - sel.len - pad, r), rowTop(r) + (sel.y - sel.wid / 2 - pad) * k, (sel.len + 2 * pad) * k, (sel.wid + 2 * pad) * k);
+    }
+  }
+
+  // ---------- time-space strips ----------
+  const st = $('st'), sctx = st.getContext('2d');
+  let stW = 0, stH = 0, stStrips = 0;
+  const LUT = [];
+  { const tmp = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    for (let i = 0; i <= 64; i++) { tmp.fillStyle = speedRGB(i / 64 * 40 / 3.6); tmp.fillRect(0, 0, 1, 1); LUT.push(tmp.getImageData(0, 0, 1, 1).data.slice(0, 3)); } }
+  const stripCanvas = document.createElement('canvas'); stripCanvas.width = S.HIST; stripCanvas.height = S.CELLS;
+  const stripCtx = stripCanvas.getContext('2d'), stripImg = stripCtx.createImageData(S.HIST, S.CELLS);
+  function layoutSt() {
+    stStrips = twin ? 2 : 1;
+    stW = st.parentElement.clientWidth - 24; stH = stStrips * 128 + (stStrips - 1) * 10 + 18;
+    st.style.height = stH + 'px'; st.width = Math.round(stW * dpr); st.height = Math.round(stH * dpr);
+  }
+  function fillStrip(w) {
+    const d = stripImg.data, h = w.hist, off = S.HIST - h.length;
+    for (let i = 0; i < d.length; i += 4) { d[i] = 32; d[i + 1] = 37; d[i + 2] = 43; d[i + 3] = 255; }
+    for (let t = 0; t < h.length; t++) {
+      const colm = h[t];
+      for (let c = 0; c < S.CELLS; c++) {
+        let sum = 0, n = 0;
+        for (let j = Math.max(0, c - 2); j <= Math.min(S.CELLS - 1, c + 2); j++) if (colm[j] >= 0) { sum += colm[j]; n++; }
+        if (n < 2) continue;
+        const v = sum / n;
+        const rgb = LUT[Math.min(64, Math.round(v * 3.6 / 40 * 64))], p = ((S.CELLS - 1 - c) * S.HIST + off + t) * 4;
+        d[p] = rgb[0]; d[p + 1] = rgb[1]; d[p + 2] = rgb[2];
+      }
+    }
+    stripCtx.putImageData(stripImg, 0, 0);
+  }
+  function drawSt() {
+    if ((twin ? 2 : 1) !== stStrips) layoutSt();
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.fillStyle = col.panel; sctx.fillRect(0, 0, stW, stH);
+    const worlds = twin ? [[twin, 'Without the mesh'], [main, 'With the RESILANE mesh']] : [[main, main.mesh ? 'With the RESILANE mesh' : 'Now, nobody has the app on']];
+    const left = 46;
+    worlds.forEach(([w, label], i) => {
+      const top = i * 138, h = 128;
+      fillStrip(w);
+      sctx.imageSmoothingEnabled = false;
+      sctx.drawImage(stripCanvas, left, top, stW - left, h);
+      sctx.fillStyle = col.ink3; sctx.font = `500 10px ${FONT_MONO}`; sctx.textAlign = 'right';
+      [[0, '0 m'], [600, '600 m'], [S.STOP_X, 'signal']].forEach(([m, t]) => { const y = top + h - m / S.L * h; sctx.fillText(t, left - 6, Math.max(top + 9, y + 3)); sctx.fillRect(left - 4, y, 3, 1); });
+      if (C.pothole) { const y = top + h - S.POT.x0 / S.L * h; sctx.fillStyle = col.sodium; sctx.fillRect(left - 4, y, 3, 1.5); }
+      sctx.textAlign = 'left'; sctx.font = `600 13px ${FONT_DISPLAY}`;
+      const tw = sctx.measureText(label).width;
+      sctx.fillStyle = 'rgba(18,22,27,.78)'; sctx.fillRect(left + 4, top + 4, tw + 12, 19);
+      sctx.fillStyle = label.startsWith('With the') ? col.mesh : col.ink; sctx.fillText(label, left + 10, top + 18);
+    });
+    sctx.fillStyle = col.ink3; sctx.font = `500 10px ${FONT_MONO}`; sctx.textAlign = 'right';
+    sctx.fillText('now', stW - 2, stH - 3); sctx.textAlign = 'left'; sctx.fillText('8 min ago', left, stH - 3);
+  }
+
+  // ---------- panels ----------
+  const fmt = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString('en-IN', { maximumFractionDigits: d, minimumFractionDigits: d }) : '-';
+  function metrics(w) {
+    const s = w.st, mins = Math.max(1 / 60, (w.t - s.t0) / 60);
+    return {
+      speed: s.spdN ? s.spdSum / s.spdN : NaN, queue: w.queueM, delay: s.delay, hb: s.hb / mins, nm: s.nm / mins,
+      thr: s.exits / mins * 60, tt: s.ttN >= 5 ? s.ttSum / s.ttN / 60 : NaN, wait: w.entry.length, mins,
+    };
+  }
+  const ROWS = [
+    ['speed', 'Average speed', 'km/h before the signal', 1, true], ['queue', 'Longest queue at the signal', 'metres, over the last signal cycle', 0, false],
+    ['delay', 'Time lost', 'vehicle-hours', 1, false], ['hb', 'Hard braking', 'per minute, harder than 3.5 m/s²', 0, false],
+    ['nm', 'Near misses', 'per minute, under 1.5 s from impact', 0, false], ['thr', 'Through the junction', 'vehicles per hour', 0, true],
+    ['tt', 'Travel time', 'minutes, vehicles that entered after the fork', 2, false], ['wait', 'Waiting to enter', 'vehicles backed up at the entry', 0, false],
+  ];
+  function renderCmp() {
+    const m = metrics(main);
+    let html;
+    if (!twin) {
+      html = `<thead><tr><th>Measure</th><th>${main.mesh ? 'Mesh' : 'Now'}</th></tr></thead><tbody>` +
+        ROWS.map(([key, label, unit, d]) => `<tr><td>${label}<small>${unit}</small></td><td>${fmt(m[key], d)}</td></tr>`).join('') + '</tbody>';
+      $('cmpNote').textContent = `Apply the mesh to fork the road into two identical copies: one where the ${Math.round(C.appShare * 100)}% of vehicles with RESILANE talk to each other, one where nobody has the app.`;
+    } else {
+      const b = metrics(twin);
+      html = `<thead><tr><th>Last ${fmt(m.mins, 1)} min</th><th>Without</th><th>With mesh</th></tr></thead><tbody>` +
+        ROWS.map(([key, label, unit, d, higherBetter]) => {
+          const x = b[key], y = m[key];
+          let delta = '';
+          if (Number.isFinite(x) && Number.isFinite(y) && (x !== 0 || y !== 0)) {
+            const diff = y - x, pct = x ? diff / Math.abs(x) * 100 : 100 * Math.sign(diff), better = higherBetter ? diff > 0 : diff < 0;
+            const cls = Math.abs(pct) < 2 ? 'flat' : better ? 'good' : 'bad';
+            delta = `<small class="delta ${cls}">${diff > 0 ? '+' : diff < 0 ? '−' : '±'}${Math.abs(pct).toFixed(0)}%</small>`;
+          }
+          return `<tr><td>${label}<small>${unit}</small></td><td>${fmt(x, d)}</td><td>${fmt(y, d)}${delta}</td></tr>`;
+        }).join('') + '</tbody>';
+      $('cmpNote').textContent = m.mins < 4
+        ? 'Same vehicles, same arrivals, same incidents. A single run is noisy, so give it a few simulated minutes and watch the trend.'
+        : 'Same vehicles, same arrivals, same incidents. Green means the mesh did better than its twin, red means worse.';
+    }
+    $('cmp').innerHTML = html;
+  }
+  const typeName = (t) => S.TYPES[t].label;
+  const typeLower = (t) => t === 'bus' ? 'BMTC bus' : S.TYPES[t].label.toLowerCase();
+  function renderMesh() {
+    const w = main, ms = w.ms;
+    if (!w.mesh) {
+      $('meshStats').innerHTML = '';
+      $('feed').innerHTML = `<li class="empty">No phones are talking yet. Once the mesh is on, every phone with RESILANE reports potholes, crashes, hard braking, queue tails, people on the road and violations, and relays what it hears up to 4 times back down the road.</li>`;
+      return;
+    }
+    const lead = ms.leadN ? Math.round(ms.leadSum / ms.leadN) : null;
+    $('meshStats').innerHTML = [
+      [fmt(w.app.length), 'phones on this road'], [fmt(ms.warnings), 'warnings spoken'], [lead == null ? '-' : `${lead} m`, 'ahead when a pothole or crash was heard (eyes alone: about 30 m)'],
+      [fmt(ms.tx), 'frames sent'], [fmt(ms.relays), 'relays'], [fmt(ms.suppressed), 'relays skipped after overhearing'],
+    ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
+    const items = [...w.msgs.values()].filter((m) => !m.refresh).reverse().slice(0, 30);
+    $('feed').innerHTML = items.length ? items.map((m) => {
+      const kind = S.KINDS[m.kind], age = (w.tm - m.t0) / 1000;
+      const source = m.range > 0 ? `Seen ${m.range} m ahead by ${typeLower(m.otype)} ${m.origin}.` : `From ${typeLower(m.otype)} ${m.origin}.`;
+      const spread = m.n ? `Reached ${m.n} phone${m.n === 1 ? '' : 's'}${m.hops > 1 ? ` over ${m.hops} hops` : ''}${m.back > 20 ? `, up to ${Math.round(m.back)} m back` : ''}.` : age < 1 ? 'On air.' : 'Nobody in range heard it.';
+      return `<li><div class="row1"><span class="tag ${kind.use}">${kind.label}</span><time>${S.clockText(m.t0 / 1000)}</time><span>at ${Math.round(m.hx)} m</span></div><span>${source} ${spread}${kind.use === 'report' ? ' Logged for the traffic police.' : ''}</span></li>`;
+    }).join('') : '<li class="empty">Listening. The first warning appears when a phone sees something.</li>';
+  }
+  function renderPicked() {
+    const w = shown();
+    const v = selected != null ? w.byId.get(selected) : null;
+    if (!v) {
+      $('picked').innerHTML = `<p class="empty">${selected != null ? 'That vehicle has left the corridor. ' : ''}Click a vehicle on the road, or let the lab pick one. Phones with RESILANE carry a teal dot; follow one to ask the road ahead.</p><div class="row"><button class="btn" id="followBtn">Follow a vehicle with RESILANE</button></div>`;
+      $('followBtn').onclick = () => {
+        const pool = w.ents.filter((e) => S.isApp(e) && e.x > 250 && e.x < 900);
+        if (pool.length) { selected = pool[Math.floor(Math.random() * pool.length)].id; renderPicked(); }
+      };
+      return;
+    }
+    const app = S.isApp(v), talking = w.mesh && app;
+    const heed = v.heeding ? `${S.KINDS[v.heeding.kind].label} ${Math.max(0, Math.round(v.heeding.x - v.x))} m ahead${v.heeding.target != null && v.heeding.kind !== 'POTHOLE' ? `, easing to ${S.kmh(v.heeding.target)} km/h` : ''}` : (talking ? 'Nothing right now' : '-');
+    const known = talking ? v.know.filter((k) => k.x > v.x - 50).sort((a, b) => a.x - b.x).slice(0, 5).map((k) => `${S.KINDS[k.kind].label} ${k.x >= v.x ? Math.round(k.x - v.x) + ' m ahead' : Math.round(v.x - k.x) + ' m behind'}`).join(', ') || 'Nothing yet' : '-';
+    const q = w.query && w.query.asker === v.id ? w.query : null;
+    let ask = '';
+    if (talking) {
+      ask = `<div class="row"><button class="btn" id="askBtn" ${q && !q.done ? 'disabled' : ''}>${q && !q.done ? 'Asking the road…' : 'Ask the road ahead'}</button></div>`;
+      if (q && q.done && q.picture) {
+        const p = q.picture;
+        ask += `<p>${p.peers.length} phone${p.peers.length === 1 ? '' : 's'} answered within 2.5 s, using ${fmt(p.frames)} frames.${p.fc.rec != null ? ` Suggested speed: <b>${p.fc.rec} km/h</b>.` : ''}</p><ul class="advice">${p.fc.advice.map((a) => `<li>${a}</li>`).join('')}</ul>`;
+      }
+    } else if (app && !w.mesh) ask = '<p class="empty">This phone has RESILANE installed. Apply the mesh to let it talk.</p>';
+    const toSignal = Math.round(S.STOP_X - v.x);
+    $('picked').innerHTML = `<dl>
+      <dt>Vehicle</dt><dd>${typeName(v.type)} ${v.id}${v.noHelmet ? ', rider without a helmet' : ''}${v.triple ? ', three on the bike' : ''}</dd>
+      <dt>Where</dt><dd>${Math.round(v.x)} m, ${toSignal > 0 ? toSignal + ' m before the signal' : 'past the signal'}</dd>
+      <dt>Speed</dt><dd class="mono" style="color:var(--ink)">${S.kmh(v.v)} km/h</dd>
+      <dt>RESILANE</dt><dd>${app ? (w.mesh ? 'On and talking' : 'Installed') : 'No phone with the app'}</dd>
+      <dt>Acting on</dt><dd>${heed}</dd>
+      <dt>Knows about</dt><dd>${known}</dd>
+    </dl>${ask}`;
+    const b = $('askBtn'); if (b) b.onclick = () => { if (S.ask(main, v.id)) renderPicked(); };
+  }
+  function renderBar() {
+    const ph = S.signalPhase(main.t);
+    $('clock').textContent = S.clockText(main.t);
+    $('signal').dataset.state = ph.state; $('sigText').textContent = `${ph.state[0].toUpperCase()}${ph.state.slice(1)} ${Math.ceil(ph.left)} s`;
+  }
+  function syncMeshUi() {
+    const on = main.mesh;
+    $('meshBtn').setAttribute('aria-pressed', String(on));
+    $('meshLabel').textContent = on ? 'Remove the mesh' : 'Apply RESILANE mesh';
+    $('viewTwin').disabled = !twin;
+    $('viewMain').textContent = on ? 'With mesh' : 'Now';
+    if (!twin && view === 'twin') view = 'main';
+    document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+    if (cssW) layoutSt();
+  }
+
+  // ---------- controls ----------
+  $('meshBtn').onclick = () => {
+    if (!main.mesh) { twin = S.fork(main); S.resetStats(main); S.resetStats(twin); S.setMesh(main, true); }
+    else { S.setMesh(main, false); twin = null; S.resetStats(main); }
+    syncMeshUi(); renderAll();
+  };
+  $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play'; };
+  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); $('play').click(); } });
+  const pick = (groupId, attr, fn) => { $(groupId).onclick = (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; fn(b.dataset[attr]); document.querySelectorAll(`#${groupId} button`).forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }; };
+  pick('speeds', 'speed', (v) => { speed = +v; });
+  pick('colours', 'colour', (v) => { colour = v; });
+  pick('views', 'view', (v) => { view = v; renderPicked(); });
+  pick('zooms', 'rows', (v) => { rows = +v; layout(); });
+  const slider = (id, out, apply, show) => { const el = $(id); const f = () => { apply(+el.value); $(out).textContent = show(+el.value); }; el.oninput = f; f(); };
+  slider('demand', 'demandOut', (v) => { C.demand = v; }, (v) => `${v.toLocaleString('en-IN')} veh/h`);
+  slider('share', 'shareOut', (v) => { C.appShare = v / 100; }, (v) => `${v}%`);
+  slider('reach', 'reachOut', (v) => { C.reach = v; }, (v) => `${v} m`);
+  slider('jay', 'jayOut', (v) => { C.jaywalk = v; }, (v) => `${v} / min`);
+  $('advice').onchange = (e) => { const v = e.target.value; C.heedSlow = v !== 'hazards'; C.heedBraking = v === 'app'; };
+  $('pothole').onchange = (e) => { C.pothole = e.target.checked; };
+  $('busStops').onchange = (e) => { C.busStops = e.target.checked; };
+  const crash = (x, y) => { crashSeq++; for (const w of [main, twin]) if (w) S.placeCrash(w, x, y, crashSeq); };
+  $('crashBtn').onclick = () => crash(880, 6.0);
+  $('placeBtn').onclick = () => {
+    placing = !placing; $('placeBtn').setAttribute('aria-pressed', String(placing)); $('placeBtn').classList.toggle('on', placing);
+    $('hint').textContent = placing ? 'Click the road where the crash happens.' : 'Click a vehicle to follow it.';
+  };
+  $('clearBtn').onclick = () => { for (const w of [main, twin]) if (w) S.clearCrashes(w); };
+  $('resetBtn').onclick = () => { seed = (seed * 48271 + 11) % 2147483647; boot(); renderAll(); };
+  cv.addEventListener('click', (ev) => {
+    const rect = cv.getBoundingClientRect(), px = ev.clientX - rect.left, py = ev.clientY - rect.top;
+    const r = Math.max(0, Math.min(rows - 1, Math.floor((py - 12) / rowH)));
+    const x = r * segM + (px - padX) / k, y = (py - rowTop(r)) / k;
+    if (placing) { crash(x, Math.max(1.3, Math.min(S.W - 2.6, y))); $('placeBtn').click(); return; }
+    let best = null, bd = Infinity;
+    for (const e of shown().ents) if (e.kind === 'veh') { const d = Math.hypot(e.x - e.len / 2 - x, e.y - y); if (d < bd) { bd = d; best = e; } }
+    selected = best && bd < Math.max(4, 12 / k) ? best.id : null;
+    renderPicked();
+  });
+
+  // ---------- loop ----------
+  function stepAll() { S.step(main); if (twin) S.step(twin); }
+  function renderAll() { renderBar(); renderCmp(); renderMesh(); renderPicked(); drawSt(); }
+  let lastPanel = 0, lastSt = 0;
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const t0 = performance.now();
+    if (warming) {
+      while (performance.now() - t0 < 28 && main.t < WARM_S) stepAll();
+      if (main.t >= WARM_S) { warming = false; $('warm').hidden = true; S.resetStats(main); }
+      else $('warm').textContent = `Evening peak building up… ${Math.round(main.t / WARM_S * 100)}%`;
+    } else if (playing) {
+      acc += dt * speed;
+      while (acc >= S.DT && performance.now() - t0 < 30) { stepAll(); acc -= S.DT; }
+      if (acc > 0.5) acc = 0;
+    }
+    draw();
+    if (now - lastPanel > 400) { lastPanel = now; renderBar(); renderCmp(); renderMesh(); if (selected != null) renderPicked(); }
+    if (now - lastSt > 1000) { lastSt = now; drawSt(); }
+    requestAnimationFrame(frame);
+  }
+  boot(); layout(); renderAll();
+  new ResizeObserver(() => layout()).observe($('roadWrap'));
+  requestAnimationFrame(frame);
+})();
+</script>
